@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Aao Milo – Video Conference</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <style>
+    body {
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    video {
+      transform: scaleX(-1);
+    }
+    video.remote {
+      transform: scaleX(1);
+    }
+    #local-video.off {
+      opacity: 0;
+    }
+    .grid-layout-0 { @apply grid-cols-1; }
+    .grid-layout-1 { @apply grid-cols-1 md:grid-cols-2; }
+    .grid-layout-many { @apply grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen text-gray-900 antialiased">
+
+<div id="landing" class="min-h-screen relative">
+
+  <!-- Branding top-left -->
+  <div class="absolute top-0 left-0 p-6 md:p-8 flex items-center gap-3 z-10">
+    <div class="bg-blue-600 p-2.5 rounded-xl text-white shadow-lg shadow-blue-200/50">
+      <i data-lucide="video" class="w-6 h-6"></i>
+    </div>
+    <span class="text-2xl md:text-3xl font-black tracking-tighter">Aao Milo</span>
+  </div>
+
+  <div class="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col lg:flex-row items-center justify-center min-h-screen gap-12 lg:gap-20 py-20">
+
+    <div class="flex-1 space-y-8 text-center lg:text-left max-w-xl">
+      <h1 class="text-4xl mt-10 md:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
+        Secure video calls<br/>
+        <span class="text-blue-600">for everyone.</span>
+      </h1>
+      <p class="text-lg md:text-xl text-gray-600 max-w-lg mx-auto lg:mx-0">
+        Premium video meetings. Now free and available for all.
+      </p>
+
+      <form id="join-form" class="space-y-6 max-w-md mx-auto lg:mx-0">
+        
+
+        <input
+          id="username"
+          type="text"
+          placeholder="Your Name"
+          required
+          class="w-full px-5 py-4 bg-white border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 rounded-2xl outline-none text-lg transition-all shadow-sm"
+        />
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input
+            id="roomid"
+            type="text"
+            placeholder="Enter meeting code (or create new)"
+            class="flex-1 px-5 py-4 bg-white border border-gray-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 rounded-2xl outline-none text-lg transition-all shadow-sm"
+          />
+          <button
+            type="submit"
+            class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-blue-200/50 transition-all text-lg whitespace-nowrap"
+          >
+            Join
+          </button>
+        </div>
+
+        <div class="flex items-center gap-5 pt-2 justify-center lg:justify-start">
+          <button type="button" id="new-meeting" class="flex items-center gap-2 text-blue-600 font-bold hover:bg-blue-50 px-4 py-2 rounded-xl transition-colors">
+            <i data-lucide="plus" class="w-5 h-5"></i>
+            New Meeting
+          </button>
+          
+          <button type="button" id="clear" class="text-gray-500 hover:text-gray-800 text-sm font-medium">Clear</button>
+        </div>
+
+        <p id="error-msg" class="text-red-600 bg-red-50 border border-red-100 p-3 rounded-xl text-sm font-medium hidden"></p>
+      </form>
+    </div>
+
+    <!-- Right – Decorative illustration (desktop only) -->
+    <div class="flex-1 hidden lg:block relative">
+      <div class="absolute inset-0 bg-blue-50 rounded-full blur-3xl opacity-60 -translate-y-10"></div>
+      <div class="relative bg-white p-8 rounded-3xl shadow-2xl border border-gray-100">
+        <div class="aspect-video bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center gap-5">
+          <i data-lucide="video" class="w-16 h-16 text-blue-600 animate-pulse"></i>
+          <p class="text-gray-400 font-medium">Ready to meet?</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ──────────────────────────────────────────────── -->
+<!--                      MEETING ROOM                 -->
+<!-- ──────────────────────────────────────────────── -->
+<div id="room" class="hidden h-screen bg-[#1a1c1e] text-white flex flex-col overflow-hidden">
+
+  <!-- Header -->
+  <header class="h-16 px-4 sm:px-6 flex items-center justify-between border-b border-white/5 bg-[#1a1c1e] z-20 shadow-md">
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 pr-4 border-r border-white/10">
+        <div class="bg-blue-600 p-1.5 rounded-lg">
+          <i data-lucide="video" class="w-4 h-4"></i>
+        </div>
+        <span class="text-lg font-black tracking-tighter hidden sm:block">Aao Milo</span>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold tracking-tight text-gray-400">Meeting: <span id="room-code-display"></span></span>
+        <button id="copy-link" title="Copy invite link" class="p-2 hover:bg-white/10 rounded-md transition-colors flex items-center gap-1.5 text-gray-300 hover:text-white">
+          <i data-lucide="link" class="w-4 h-4"></i>
+          <span class="text-[10px] font-bold uppercase hidden sm:inline">Invite</span>
+        </button>
+        <span id="copied-toast" class="hidden text-green-400 text-xs font-medium">Copied!</span>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-4">
+      <div class="hidden sm:flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/10">
+        <i data-lucide="users" class="w-3.5 h-3.5 text-blue-400"></i>
+        <span class="text-[10px] font-bold uppercase tracking-widest">1 ONLINE</span>
+      </div>
+      <span class="text-xs font-mono text-gray-400" id="clock"></span>
+    </div>
+  </header>
+
+  <!-- Video Grid -->
+  <main class="flex-1 p-4 sm:p-6 overflow-auto">
+    <div id="video-grid" class="grid gap-4 h-full max-w-7xl mx-auto grid-layout-0">
+      <!-- Local video tile -->
+      <div class="relative rounded-3xl overflow-hidden bg-black border border-white/5 shadow-2xl group">
+        <video id="local-video" autoplay playsinline muted class="w-full h-full object-cover"></video>
+
+        <div id="camera-off-placeholder" class="absolute inset-0 hidden flex flex-col items-center justify-center bg-gradient-to-br from-gray-800 to-gray-900">
+          <div id="avatar-circle" class="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-blue-600 flex items-center justify-center text-4xl font-bold border-4 border-white/10 shadow-2xl">
+            ?
+          </div>
+          <p class="mt-4 text-gray-300 text-xs sm:text-sm font-medium uppercase tracking-widest">Camera Off</p>
+        </div>
+
+        <div class="absolute bottom-4 left-4 bg-black/60 px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl text-xs sm:text-sm backdrop-blur-lg border border-white/10 flex items-center gap-2.5">
+          <div id="mic-status-dot" class="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.7)]"></div>
+          <span id="my-name-display" class="font-bold">You</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Controls -->
+  <footer class="h-24 sm:h-28 bg-[#1a1c1e] flex items-center justify-center gap-4 sm:gap-6 px-4 border-t border-white/5">
+    <div class="flex items-center gap-3 sm:gap-5 bg-white/5 p-3 sm:p-4 rounded-[2.5rem] border border-white/10 shadow-2xl">
+      <button id="btn-mic" class="p-4 sm:p-5 rounded-2xl hover:bg-white/10 transition-all">
+        <i data-lucide="mic" class="w-6 h-6"></i>
+      </button>
+      <button id="btn-cam" class="p-4 sm:p-5 rounded-2xl hover:bg-white/10 transition-all">
+        <i data-lucide="video" class="w-6 h-6"></i>
+      </button>
+      <button id="btn-share" class="p-4 sm:p-5 rounded-2xl hover:bg-white/10 transition-all">
+        <i data-lucide="screen-share" class="w-6 h-6"></i>
+      </button>
+    </div>
+
+    <button id="btn-leave" class="bg-red-600 hover:bg-red-700 active:bg-red-800 px-8 sm:px-12 py-4 sm:py-5 rounded-2xl flex items-center gap-3 font-bold shadow-xl shadow-red-900/40 transition-all">
+      <i data-lucide="phone-off" class="w-5 h-5"></i>
+      <span class="hidden sm:inline">Leave</span>
+    </button>
+  </footer>
+</div>
+<footer class="bg-white py-6 border-t border-gray-200 text-center text-gray-500 text-sm mt-auto">
+  <div class="max-w-7xl mx-auto px-6">
+    © <span id="current-year"></span> Aao Milo. All rights reserved.
+  </div>
+</footer>
+
+<script>
+// ────────────────────────────────────────────────
+//               GLOBAL STATE & ELEMENTS
+// ────────────────────────────────────────────────
+
+lucide.createIcons();
+
+const landing   = document.getElementById('landing');
+const room      = document.getElementById('room');
+const videoGrid = document.getElementById('video-grid');
+
+const localVideo     = document.getElementById('local-video');
+const cameraOffLayer = document.getElementById('camera-off-placeholder');
+const avatarCircle   = document.getElementById('avatar-circle');
+const myNameDisplay  = document.getElementById('my-name-display');
+const micStatusDot   = document.getElementById('mic-status-dot');
+
+const btnMic    = document.getElementById('btn-mic');
+const btnCam    = document.getElementById('btn-cam');
+const btnShare  = document.getElementById('btn-share');
+const btnLeave  = document.getElementById('btn-leave');
+const copyLink   = document.getElementById('copy-link');
+const copiedToast = document.getElementById('copied-toast');
+const clockEl    = document.getElementById('clock');
+const roomCodeEl = document.getElementById('room-code-display');
+
+let localStream = null;
+let screenStream = null;
+let isMuted      = false;
+let isCamOff     = false;
+let isSharing    = false;
+let currentRoom  = '';
+
+// ────────────────────────────────────────────────
+//               CLOCK
+// ────────────────────────────────────────────────
+setInterval(() => {
+  clockEl.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}, 1000);
+clockEl.textContent = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+// ────────────────────────────────────────────────
+//               UTILITIES
+// ────────────────────────────────────────────────
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+function generateRoomId() {
+  return [
+    Math.random().toString(36).slice(2,5),
+    Math.random().toString(36).slice(2,6),
+    Math.random().toString(36).slice(2,5)
+  ].join('-');
+}
+
+function updateGridClass() {
+  // For now we have only 1 video → always 1
+  videoGrid.className = videoGrid.className.replace(/grid-layout-\w+/g,'') + ' grid-layout-0';
+}
+
+// ────────────────────────────────────────────────
+//               MEDIA
+// ────────────────────────────────────────────────
+async function getMedia(replace = false) {
+  try {
+    const constraints = {
+      video: { facingMode: "user" },
+      audio: true
+    };
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    if (replace && localStream) {
+      localStream.getTracks().forEach(t => t.stop());
+    }
+
+    localStream = stream;
+    localVideo.srcObject = stream;
+
+    // Update tracks enabled state
+    stream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+    stream.getVideoTracks().forEach(t => t.enabled = !isCamOff);
+
+    cameraOffLayer.classList.toggle('hidden', !isCamOff);
+    updateMicIndicator();
+
+    return stream;
+  } catch (err) {
+    showError("Cannot access camera/microphone: " + err.message);
+    return null;
+  }
+}
+
+function updateMicIndicator() {
+  micStatusDot.className = `w-2.5 h-2.5 rounded-full ${isMuted ? 'bg-red-500 shadow-red-500/50' : 'bg-green-500 shadow-green-500/70'}`;
+}
+
+function stopAllMedia() {
+  if (localStream) {
+    localStream.getTracks().forEach(t => t.stop());
+    localStream = null;
+  }
+  if (screenStream) {
+    screenStream.getTracks().forEach(t => t.stop());
+    screenStream = null;
+  }
+  localVideo.srcObject = null;
+}
+
+// ────────────────────────────────────────────────
+//               CONTROLS
+// ────────────────────────────────────────────────
+btnMic.onclick = () => {
+  isMuted = !isMuted;
+  if (localStream) {
+    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+  }
+  btnMic.innerHTML = `<i data-lucide="${isMuted ? 'mic-off' : 'mic'}" class="w-6 h-6"></i>`;
+  micStatusDot.className = `w-2.5 h-2.5 rounded-full ${isMuted ? 'bg-red-500 shadow-red-500/50' : 'bg-green-500 shadow-green-500/70'}`;
+  lucide.createIcons();
+};
+
+btnCam.onclick = () => {
+  isCamOff = !isCamOff;
+  if (localStream) {
+    localStream.getVideoTracks().forEach(t => t.enabled = !isCamOff);
+  }
+  btnCam.innerHTML = `<i data-lucide="${isCamOff ? 'video-off' : 'video'}" class="w-6 h-6"></i>`;
+  cameraOffLayer.classList.toggle('hidden', !isCamOff);
+  lucide.createIcons();
+};
+
+btnShare.onclick = async () => {
+  if (isSharing) {
+    // stop sharing
+    if (screenStream) {
+      screenStream.getTracks().forEach(t => t.stop());
+      screenStream = null;
+    }
+    await getMedia(true); // go back to camera
+    isSharing = false;
+    btnShare.classList.remove('bg-blue-600','shadow-blue-900/40');
+    btnShare.classList.add('hover:bg-white/10');
+    lucide.createIcons();
+    return;
+  }
+
+  try {
+    screenStream = await navigator.mediaDevices.getDisplayMedia({
+      video: true,
+      audio: false   // you can set true if you want system + mic audio
+    });
+
+    localVideo.srcObject = screenStream;
+    isSharing = true;
+    isCamOff = false;
+    cameraOffLayer.classList.add('hidden');
+
+    btnShare.classList.add('bg-blue-600','shadow-blue-900/40');
+    btnShare.classList.remove('hover:bg-white/10');
+
+    // When user stops sharing via browser UI
+    screenStream.getVideoTracks()[0].onended = () => {
+      btnShare.click();
+    };
+
+    lucide.createIcons();
+  } catch (err) {
+    showError("Screen sharing failed: " + err.message);
+  }
+};
+
+btnLeave.onclick = () => {
+  stopAllMedia();
+  landing.classList.remove('hidden');
+  room.classList.add('hidden');
+  isMuted = isCamOff = isSharing = false;
+  lucide.createIcons();
+};
+
+// ────────────────────────────────────────────────
+//               LANDING PAGE ACTIONS
+// ────────────────────────────────────────────────
+document.getElementById('new-meeting').onclick = () => {
+  const id = generateRoomId();
+  document.getElementById('roomid').value = id;
+};
+
+document.getElementById('clear').onclick = () => {
+  document.getElementById('username').value = '';
+  document.getElementById('roomid').value = '';
+  document.getElementById('error-msg').classList.add('hidden');
+};
+
+document.getElementById('join-form').onsubmit = async e => {
+  e.preventDefault();
+
+  const name = document.getElementById('username').value.trim();
+  const code = document.getElementById('roomid').value.trim();
+
+  if (!name || !code) {
+    showError("Please enter your name and meeting code.");
+    return;
+  }
+
+  currentRoom = code;
+  roomCodeEl.textContent = code;
+  myNameDisplay.textContent = name;
+  avatarCircle.textContent = name.charAt(0).toUpperCase();
+
+  // Try to get media
+  const stream = await getMedia();
+  if (!stream) return;
+
+  landing.classList.add('hidden');
+  room.classList.remove('hidden');
+
+  updateGridClass();
+};
+
+// ────────────────────────────────────────────────
+//               INVITE LINK
+// ────────────────────────────────────────────────
+copyLink.onclick = () => {
+  const url = `${window.location.origin}${window.location.pathname}?room=${currentRoom}`;
+  navigator.clipboard.writeText(url).then(() => {
+    copiedToast.classList.remove('hidden');
+    setTimeout(() => copiedToast.classList.add('hidden'), 1800);
+  });
+};
+
+// Auto-join from URL ?room=xxx
+const params = new URLSearchParams(window.location.search);
+const sharedRoom = params.get('room');
+if (sharedRoom) {
+  document.getElementById('roomid').value = sharedRoom;
+}
+
+</script>
+</body>
+</html>
